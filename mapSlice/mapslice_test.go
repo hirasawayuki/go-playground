@@ -17,6 +17,16 @@ func TestMapSlice_IntSlice(t *testing.T) {
 			input: []int{1, 2, 3, 4, 5},
 			want:  []int{2, 4, 6, 8, 10},
 		},
+		{
+			name:  "Returns a slice of the element (all zero) multiplied by 2",
+			input: []int{0, 0, 0, 0, 0},
+			want:  []int{0, 0, 0, 0, 0},
+		},
+		{
+			name:  "Returns a empty slice",
+			input: []int{},
+			want:  []int{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -40,6 +50,16 @@ func TestMapSlice_StringSlice(t *testing.T) {
 			name:  "Returns a slice with the element capitalized",
 			input: []string{"a", "b", "c", "d", "e"},
 			want:  []string{"A", "B", "C", "D", "E"},
+		},
+		{
+			name:  "Returns a slice with the element capitalized",
+			input: []string{"A", "B", "C", "D", "E"},
+			want:  []string{"A", "B", "C", "D", "E"},
+		},
+		{
+			name:  "Returns a empty slice",
+			input: []string{},
+			want:  []string{},
 		},
 	}
 
