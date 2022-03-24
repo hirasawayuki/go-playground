@@ -4,12 +4,12 @@ import (
 	"fmt"
 )
 
-func mapSlice[T, M any](a []T, f func(T) M) []M {
-	n := make([]M, len(a))
-	for i, e := range a {
-		n[i] = f(e)
+func mapSlice[T, U any](sl []T, f func(T) U) []U {
+	r := make([]U, len(sl))
+	for i, s := range sl {
+		r[i] = f(s)
 	}
-	return n
+	return r
 }
 
 func main() {
