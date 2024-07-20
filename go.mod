@@ -1,5 +1,5 @@
 module github.com/hirasawayuki/go-generics
 
-go 1.22.5
+go 1.23rc1
 
 require golang.org/x/net v0.24.0
