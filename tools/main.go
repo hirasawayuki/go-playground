@@ -3,10 +3,10 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,14 +41,24 @@ func run() error {
 	}
 	defer resp.Body.Close()
 
-	infos, err := scrapeCSVInfos(resp.Body)
+	listCSVInfo, err := scrapeCSVInfo(resp.Body)
 	if err != nil {
 		panic(fmt.Sprintf("unepxected error: %v", err))
 	}
 
-	for _, info := range infos {
+	for _, info := range listCSVInfo {
 		err := func() error {
-			req, err := http.NewRequest(http.MethodGet, info.DownloadURL(), nil)
+			u, err := url.Parse(downloadURL)
+			if err != nil {
+				return err
+			}
+			q := u.Query()
+			q.Set("dlFilKanriNo", info.FileNum)
+			q.Set("jinkakukbn", info.Section)
+			q.Set("type", "csv")
+			u.RawQuery = q.Encode()
+
+			req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 			if err != nil {
 				return err
 			}
@@ -86,14 +96,25 @@ type CSVInfo struct {
 	Section string
 }
 
-func (info CSVInfo) DownloadURL() string {
-	return fmt.Sprintf("%s?dlFilKanriNo=%s&jinkakukbn=%s&type=csv", downloadURL, info.FileNum, info.Section)
+func (info CSVInfo) DownloadURL() (string, error) {
+	u, err := url.Parse(downloadURL)
+	if err != nil {
+		return "", err
+	}
+
+	q := u.Query()
+	q.Set("dlFilKanriNo", info.FileNum)
+	q.Set("jinkakukbn", info.Section)
+	q.Set("type", "csv")
+	u.RawQuery = q.Encode()
+
+	return u.String(), nil
 }
 
-func scrapeCSVInfos(r io.Reader) ([]CSVInfo, error) {
+func scrapeCSVInfo(r io.Reader) ([]CSVInfo, error) {
 	htmlNode, err := html.Parse(r)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parsing HTML: %w", err)
+		return nil, err
 	}
 
 	var tableNode *html.Node
@@ -113,12 +134,12 @@ func scrapeCSVInfos(r io.Reader) ([]CSVInfo, error) {
 	}
 	findTable(htmlNode)
 	if tableNode == nil {
-		return nil, errors.New("failed to find table#DLtableCsv")
+		return nil, err
 	}
 
-	var csvInfos []CSVInfo
-	var findCSVInfos func(*html.Node)
-	findCSVInfos = func(n *html.Node) {
+	var listCSVInfo []CSVInfo
+	var extractCSVInfo func(*html.Node)
+	extractCSVInfo = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, a := range n.Attr {
 				if a.Key == "onclick" && strings.HasPrefix(a.Val, "return doDownload(") {
@@ -128,7 +149,7 @@ func scrapeCSVInfos(r io.Reader) ([]CSVInfo, error) {
 						attrVal := a.Val[start+1 : end]
 						params := strings.Split(strings.Trim(attrVal, "'"), "','")
 						if len(params) >= 2 {
-							csvInfos = append(csvInfos, CSVInfo{FileNum: params[0], Section: params[1]})
+							listCSVInfo = append(listCSVInfo, CSVInfo{FileNum: params[0], Section: params[1]})
 						}
 					}
 					break
@@ -136,12 +157,12 @@ func scrapeCSVInfos(r io.Reader) ([]CSVInfo, error) {
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findCSVInfos(c)
+			extractCSVInfo(c)
 		}
 	}
-	findCSVInfos(tableNode)
 
-	return csvInfos, nil
+	extractCSVInfo(tableNode)
+	return listCSVInfo, nil
 }
 
 func uploadToS3(data []byte) error {
