@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 func main() {
 	for c := range Alphabet {
@@ -8,6 +11,13 @@ func main() {
 		if c == 'C' {
 			break
 		}
+	}
+
+	fmt.Println("")
+	values := []string{"a", "b", "c"}
+
+	for i, s := range slices.All(values) {
+		fmt.Printf("%d: %s\n", i, s)
 	}
 }
 
